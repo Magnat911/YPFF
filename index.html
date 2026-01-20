@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Receptionist Button</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    button { padding: 12px 24px; font-size: 18px; border-radius: 8px; border: none; background: #2563eb; color: white; cursor: pointer; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    #status { margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <button id="callBtn">Call AI Receptionist</button>
+  <div id="status"></div>
+
+  <!-- LiveKit JS SDK через CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+  <script>
+    const tokenServerUrl = "https://YOUR_TOKEN_SERVER_DOMAIN/token"; // сюда URL твоего server.js
+
+    const callBtn = document.getElementById("callBtn");
+    const statusEl = document.getElementById("status");
+
+    let room = null;
+
+    async function startCall() {
+      try {
+        callBtn.disabled = true;
+        statusEl.textContent = "Requesting LiveKit token...";
+
+        const res = await fetch(tokenServerUrl, { method: "POST" });
+        if (!res.ok) throw new Error("Token server error");
+        const { token, url } = await res.json();
+
+        statusEl.textContent = "Connecting to LiveKit...";
+        const { Room, RoomEvent, createLocalTracks, Track } = LivekitClient;
+
+        room = new Room({
+          adaptiveStream: true
+        });
+
+        // Подписка на события (debug)
+        room
+          .on(RoomEvent.ParticipantConnected, (p) => {
+            console.log("Participant connected:", p.identity);
+            statusEl.textContent = "Agent/participant connected.";
+          })
+          .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+            console.log("Track subscribed from", participant.identity, track.kind);
+            if (track.kind === Track.Kind.Audio) {
+              track.attach(document.body); // добавить аудио к документу
+            }
+          })
+          .on(RoomEvent.Disconnected, () => {
+            statusEl.textContent = "Disconnected from room.";
+            callBtn.disabled = false;
+          });
+
+        // Локальный микрофон
+        const localTracks = await createLocalTracks({
+          audio: true,
+          video: false
+        });
+
+        await room.connect(url, token);
+        statusEl.textContent = "Connected. Talking to AI receptionist...";
+
+        // Публикуем микрофон
+        for (const track of localTracks) {
+          await room.localParticipant.publishTrack(track);
+        }
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = "Error: " + (err.message || "failed to connect");
+        callBtn.disabled = false;
+      }
+    }
+
+    callBtn.addEventListener("click", () => {
+      if (room && room.state === "connected") {
+        room.disconnect();
+        room = null;
+        callBtn.textContent = "Call AI Receptionist";
+        statusEl.textContent = "Disconnected.";
+      } else {
+        callBtn.textContent = "Connecting...";
+        startCall();
+      }
+    });
+  </script>
+</body>
+</html>
