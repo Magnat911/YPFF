@@ -1,30 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>AI Receptionist</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { 
-      font-family: system-ui, sans-serif; 
-      display: flex; 
-      flex-direction: column; 
-      align-items: center; 
-      justify-content: center; 
-      min-height: 100vh; 
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white; 
-      margin: 0; 
-    }
+    body { font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin: 0; }
     .container { text-align: center; padding: 2rem; }
     h1 { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; }
     p { font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.9; }
-    #callBtn { 
-      background: #10b981; color: white; border: none; 
-      padding: 1rem 2rem; font-size: 1.2rem; border-radius: 9999px; 
-      cursor: pointer; box-shadow: 0 10px 30px rgba(16,185,129,0.4);
-      transition: all 0.3s; 
-    }
+    #callBtn { background: #10b981; color: white; border: none; padding: 1rem 2rem; font-size: 1.2rem; border-radius: 9999px; cursor: pointer; box-shadow: 0 10px 30px rgba(16,185,129,0.4); transition: all 0.3s; }
     #callBtn:hover:not(:disabled) { background: #059669; transform: translateY(-2px); }
     #callBtn:disabled { opacity: 0.6; cursor: not-allowed; }
     #status { margin-top: 1.5rem; font-size: 1.1rem; }
@@ -36,103 +21,94 @@
 <body>
   <div class="container">
     <h1>🤖 AI Receptionist</h1>
-    <p>Нажми кнопку и говори с агентом Sage-1242</p>
-    <button id="callBtn">📞 Позвонить AI Receptionist</button>
+    <p>Нажми и говори с Sage-1242</p>
+    <button id="callBtn">📞 Позвонить</button>
     <div id="status"></div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
   <script>
-    // ✅ ТВОЙ ТОЧНЫЙ ДОМЕН С /api/token
-    const TOKEN_SERVER_URL = "https://ypff-yexksfs2h-nikita1212392-9872s-projects.vercel.app/api/token";
+    // 🔥 ТВОЙ НОВЫЙ ДОМЕН (замени на актуальный если изменился)
+    const TOKEN_SERVER_URL = "https://ypff-8hpne1l4l-nikita1212392-9872s-projects.vercel.app/api/token";
     
-    const callBtn = document.getElementById("callBtn");
-    const statusEl = document.getElementById("status");
+    const callBtn = document.getElementById('callBtn');
+    const statusEl = document.getElementById('status');
     let room = null;
     let localTracks = [];
 
     async function startCall() {
       try {
         callBtn.disabled = true;
-        statusEl.textContent = "🔄 Запрашиваем токен...";
-        statusEl.className = "connecting";
+        statusEl.textContent = "🔄 Получаем токен...";
+        statusEl.className = 'connecting';
 
-        // 1. Получаем токен с ТВОЕГО сервера
-        console.log("📡 Запрос токена:", TOKEN_SERVER_URL);
+        console.log('📡 Запрос:', TOKEN_SERVER_URL);
+        
         const res = await fetch(TOKEN_SERVER_URL, { 
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          // 🚀 CORS headers для обхода блокировки
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           mode: 'cors'
         });
         
         if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(`Сервер токена: ${res.status} ${errorText}`);
+          const error = await res.text();
+          throw new Error(`HTTP ${res.status}: ${error}`);
         }
         
         const data = await res.json();
-        console.log("✅ Токен получен:", data);
+        console.log('✅ Токен:', data);
         
-        statusEl.textContent = "🎤 Подключаем микрофон...";
+        statusEl.textContent = '🎤 Микрофон...';
 
-        // 2. LiveKit подключение
+        // LiveKit
         const { Room, RoomEvent, createLocalTracks } = LivekitClient;
         room = new Room();
 
         room.on(RoomEvent.Connected, () => {
-          statusEl.textContent = "✅ Подключен! Говори с агентом!";
-          statusEl.className = "connected";
+          statusEl.textContent = '✅ Подключен к Sage-1242!';
+          statusEl.className = 'connected';
         });
 
         room.on(RoomEvent.ParticipantConnected, (p) => {
-          console.log("👤 Подключился:", p.identity);
-          if (p.identity.includes('agent') || p.identity.includes('Sage')) {
-            statusEl.textContent = "🤖 Sage-1242 подключился!";
+          console.log('👤', p.identity);
+          if (p.identity.includes('Sage') || p.identity.includes('agent')) {
+            statusEl.textContent = '🤖 Агент подключился!';
           }
         });
 
         room.on(RoomEvent.TrackSubscribed, (track) => {
-          if (track.kind === 'audio') {
-            track.attach(); // Аудио от агента
-          }
+          if (track.kind === 'audio') track.attach();
         });
 
         room.on(RoomEvent.Disconnected, cleanup);
 
-        // 3. Микрофон
         localTracks = await createLocalTracks({ audio: true, video: false });
         await room.connect(data.url, data.token);
-
-        // 4. Публикуем микрофон
+        
         for (const track of localTracks) {
           await room.localParticipant.publishTrack(track);
         }
 
       } catch (err) {
-        console.error("❌ Ошибка:", err);
+        console.error('❌', err);
         statusEl.textContent = `❌ ${err.message}`;
-        statusEl.className = "error";
+        statusEl.className = 'error';
         cleanup();
       }
     }
 
     function cleanup() {
-      localTracks.forEach(track => track.stop());
+      localTracks.forEach(t => t.stop());
       if (room) room.disconnect();
-      room = null;
-      localTracks = [];
+      room = null; localTracks = [];
       callBtn.disabled = false;
-      callBtn.textContent = "📞 Позвонить AI Receptionist";
-      statusEl.textContent = "";
+      callBtn.textContent = '📞 Позвонить';
+      statusEl.textContent = '';
     }
 
-    callBtn.addEventListener("click", () => {
-      if (room && room.state === "connected") {
-        cleanup();
-      } else {
-        startCall();
-      }
+    callBtn.addEventListener('click', () => {
+      if (room?.state === 'connected') cleanup();
+      else startCall();
     });
   </script>
 </body>
