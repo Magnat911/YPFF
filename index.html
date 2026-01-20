@@ -26,11 +26,11 @@
     <button id="callBtn">📞 Позвонить агенту</button>
     <div id="status"></div>
   </div>
+
   <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
   <script>
-    // 🔥 ТВОЙ РЕАЛЬНЫЙ VERCEL URL (замени на свой после deploy)
-    const TOKEN_SERVER_URL = "https://ypff-8hpne1l4l-nikita1212392-9872s-projects.vercel.app/api/token"; // Твой Vercel URL + /api/token
-    console.log("🚀 Запуск с URL:", TOKEN_SERVER_URL);
+    // 🔥 Относительный URL — работает на том же домене Vercel (fix CORS)
+    const TOKEN_SERVER_URL = "/api/token";
 
     const callBtn = document.getElementById('callBtn');
     const statusEl = document.getElementById('status');
@@ -48,10 +48,13 @@
           headers: { 'Content-Type': 'application/json' },
         });
 
-        if (!res.ok) throw new Error(`Ошибка ${res.status}`);
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(`Сервер ошибка ${res.status}: ${errorText}`);
+        }
 
         const data = await res.json();
-        console.log("✅ Токен:", data);
+        console.log("✅ Токен получен:", data);
 
         statusEl.textContent = "🎤 Подключаем микрофон...";
 
@@ -63,6 +66,16 @@
           statusEl.className = 'connected';
         });
 
+        room.on('participantConnected', (participant) => {
+          if (participant.identity.includes('Sage') || participant.identity.includes('agent')) {
+            statusEl.textContent = "🤖 Sage-1242 на линии!";
+          }
+        });
+
+        room.on('trackSubscribed', (track) => {
+          if (track.kind === 'audio') track.attach();
+        });
+
         localTracks = await createLocalTracks({ audio: true, video: false });
         await room.connect(data.url, data.token);
 
@@ -70,7 +83,7 @@
           await room.localParticipant.publishTrack(track);
         }
       } catch (err) {
-        console.error(err);
+        console.error("❌ Ошибка:", err);
         statusEl.textContent = `❌ ${err.message}`;
         statusEl.className = 'error';
         cleanup();
@@ -83,7 +96,7 @@
       callBtn.disabled = false;
     }
 
-    callBtn.addEventListener('click', startCall);
+    callBtn.addEventListener('click', () => room?.state === 'connected' ? cleanup() : startCall());
   </script>
 </body>
 </html>
