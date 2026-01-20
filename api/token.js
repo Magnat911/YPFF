@@ -1,51 +1,40 @@
+import { RoomServiceClient, AccessToken } from 'livekit-server-sdk';
+
+export const config = { api: { bodyParser: false } };
+
 export default async function handler(req, res) {
+  // Fix CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-  
-  if (req.method !== 'POST') {
-    res.status(405).end();
-    return;
-  }
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).end();
 
   const apiKey = process.env.LIVEKIT_API_KEY;
   const apiSecret = process.env.LIVEKIT_API_SECRET;
   const wsUrl = process.env.LIVEKIT_WS_URL;
 
-  if (!apiKey || !apiSecret) {
-    res.status(500).json({ error: 'Добавь LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_WS_URL в Vercel Environment Variables' });
-    return;
-  }
+  if (!apiKey || !apiSecret || !wsUrl) return res.status(500).json({ error: 'Env vars missing' });
 
   try {
-    const { AccessToken } = await import('livekit-server-sdk');
-    const roomName = `sage-1242-${Date.now()}`;
-    const identity = `web-user-${Math.random().toString(36).slice(2)}`;
+    const roomService = new RoomServiceClient(`https://${new URL(wsUrl).host}`, apiKey, apiSecret);
 
-    const at = new AccessToken(apiKey, apiSecret, { 
-      identity,
-      metadata: JSON.stringify({
-        agent_name: "Sage-1242",
-        agent_id: "CA_98PSZhgP7t8C"
-      })
-    });
-    
-    at.addGrant({ 
-      roomJoin: true, 
-      room: roomName, 
-      canPublish: true, 
-      canSubscribe: true 
+    const roomName = 'sage-room'; // Твоя room
+    // Dispatch Sage-1242
+    await roomService.dispatchAgent({
+      room: roomName,
+      agentName: 'Sage-1242',
+      metadata: JSON.stringify({ agentId: 'CA_98PSZhgP7t8C' })
     });
 
-    const token = await at.toJwt();
-    res.json({ token, url: wsUrl, roomName });
+    // Generate token
+    const at = new AccessToken(apiKey, apiSecret, { identity: `web-user-${Date.now()}` });
+    at.addGrant({ roomJoin: true, room: roomName, canPublish: true, canSubscribe: true });
+    const token = at.toJwt();
+
+    res.json({ url: wsUrl, token, roomName });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: err.message });
   }
 }
