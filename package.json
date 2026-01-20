@@ -1,0 +1,12 @@
+{
+  "name": "livekit-token-server",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "node api/token.js"
+  },
+  "dependencies": {
+    "livekit-server-sdk": "^2.3.0"
+  }
+}
