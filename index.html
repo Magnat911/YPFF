@@ -2,27 +2,50 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>AI Receptionist</title>
+  <title>AI Receptionist Sage-1242</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin: 0; }
-    .container { text-align: center; padding: 2rem; }
+    body { 
+      font-family: system-ui, sans-serif; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center; 
+      min-height: 100vh; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+      color: white; 
+      margin: 0; 
+      text-align: center; 
+    }
+    .container { padding: 2rem; max-width: 500px; }
     h1 { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; }
     p { font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.9; }
-    #callBtn { background: #10b981; color: white; border: none; padding: 1rem 2rem; font-size: 1.2rem; border-radius: 9999px; cursor: pointer; box-shadow: 0 10px 30px rgba(16,185,129,0.4); transition: all 0.3s; }
-    #callBtn:hover:not(:disabled) { background: #059669; transform: translateY(-2px); }
-    #callBtn:disabled { opacity: 0.6; cursor: not-allowed; }
-    #status { margin-top: 1.5rem; font-size: 1.1rem; }
+    #callBtn { 
+      background: #10b981; 
+      color: white; 
+      border: none; 
+      padding: 1.2rem 2.5rem; 
+      font-size: 1.3rem; 
+      border-radius: 50px; 
+      cursor: pointer; 
+      box-shadow: 0 10px 30px rgba(16,185,129,0.4); 
+      transition: all 0.3s; 
+      font-weight: 600;
+    }
+    #callBtn:hover:not(:disabled) { background: #059669; transform: translateY(-3px); box-shadow: 0 15px 40px rgba(16,185,129,0.6); }
+    #callBtn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    #status { margin-top: 1.5rem; font-size: 1.2rem; font-weight: 500; }
     .connecting { color: #fbbf24; }
-    .connected { color: #10b981; }
+    .connected { color: #10b981; animation: pulse 2s infinite; }
     .error { color: #ef4444; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>🤖 Sage-1242</h1>
-    <p>Нажми кнопку и говори с агентом</p>
-    <button id="callBtn">📞 Позвонить</button>
+    <p>AI Receptionist для риелторов. Нажми и говори!</p>
+    <button id="callBtn">📞 Позвонить агенту</button>
     <div id="status"></div>
   </div>
 
@@ -31,7 +54,7 @@
     // 🔥 ТВОЙ ТОЧНЫЙ ДОМЕН
     const TOKEN_SERVER_URL = "https://ypff-8hpne1l4l-nikita1212392-9872s-projects.vercel.app/api/token";
     
-    console.log("🔧 TOKEN_SERVER_URL:", TOKEN_SERVER_URL); // ← ЭТО БУДЕТ ВИДЕТЬСЯ В КОНСОЛИ!
+    console.log("🚀 Запуск с URL:", TOKEN_SERVER_URL);
     
     const callBtn = document.getElementById('callBtn');
     const statusEl = document.getElementById('status');
@@ -43,49 +66,78 @@
         callBtn.disabled = true;
         statusEl.textContent = "🔄 Получаем токен...";
         statusEl.className = 'connecting';
+        
+        console.log("📡 POST запрос на:", TOKEN_SERVER_URL);
 
         const res = await fetch(TOKEN_SERVER_URL, { 
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
         });
         
         if (!res.ok) {
-          const error = await res.text();
-          throw new Error(`HTTP ${res.status}: ${error}`);
+          const errorText = await res.text();
+          throw new Error(`Ошибка сервера ${res.status}: ${errorText}`);
         }
         
         const data = await res.json();
-        console.log('✅ Токен получен:', data);
+        console.log("✅ Токен получен:", {
+          url: data.url,
+          roomName: data.roomName,
+          tokenLength: data.token?.length
+        });
         
-        statusEl.textContent = '🎤 Микрофон...';
+        statusEl.textContent = "🎤 Подключаем микрофон...";
 
+        // LiveKit подключение
         const { Room, RoomEvent, createLocalTracks } = LivekitClient;
-        room = new Room();
+        room = new Room({
+          adaptiveStream: true
+        });
 
         room.on(RoomEvent.Connected, () => {
-          statusEl.textContent = '✅ Подключен к агенту!';
+          statusEl.textContent = "✅ Подключен! Говори с агентом!";
           statusEl.className = 'connected';
         });
 
-        room.on(RoomEvent.ParticipantConnected, (p) => {
-          console.log('👤 Подключился:', p.identity);
+        room.on(RoomEvent.ParticipantConnected, (participant) => {
+          console.log("👤 Участник:", participant.identity);
+          if (participant.identity.includes('Sage') || participant.identity.includes('agent')) {
+            statusEl.textContent = "🤖 Sage-1242 подключился!";
+          }
         });
 
-        room.on(RoomEvent.TrackSubscribed, (track) => {
-          if (track.kind === 'audio') track.attach();
+        room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+          console.log("🔊 Трек:", track.kind, "от", participant?.identity);
+          if (track.kind === 'audio' && !track.isLocal) {
+            track.attach();
+          }
         });
 
         room.on(RoomEvent.Disconnected, cleanup);
+        room.on(RoomEvent.ConnectionFailed, () => {
+          throw new Error("Не удалось подключиться к LiveKit");
+        });
 
-        localTracks = await createLocalTracks({ audio: true, video: false });
+        // Микрофон
+        localTracks = await createLocalTracks({ 
+          audio: true, 
+          video: false,
+          echoCancellation: true,
+          noiseSuppression: true
+        });
+        
+        console.log("🎙️ Микрофон готов");
         await room.connect(data.url, data.token);
         
+        // Публикуем аудио
         for (const track of localTracks) {
           await room.localParticipant.publishTrack(track);
+          console.log("📤 Опубликовано:", track.kind);
         }
 
       } catch (err) {
-        console.error('❌ Ошибка:', err);
+        console.error("❌ Ошибка:", err);
         statusEl.textContent = `❌ ${err.message}`;
         statusEl.className = 'error';
         cleanup();
@@ -93,18 +145,30 @@
     }
 
     function cleanup() {
-      localTracks.forEach(t => t.stop());
-      if (room) room.disconnect();
-      room = null; localTracks = [];
+      if (localTracks) {
+        localTracks.forEach(track => track.stop());
+        localTracks = [];
+      }
+      if (room) {
+        room.disconnect();
+        room = null;
+      }
       callBtn.disabled = false;
-      callBtn.textContent = '📞 Позвонить';
+      callBtn.textContent = '📞 Позвонить агенту';
       statusEl.textContent = '';
+      statusEl.className = '';
     }
 
     callBtn.addEventListener('click', () => {
-      if (room?.state === 'connected') cleanup();
-      else startCall();
+      if (room?.state === 'connected') {
+        cleanup();
+      } else {
+        startCall();
+      }
     });
+
+    // Автоочистка
+    window.addEventListener('beforeunload', cleanup);
   </script>
 </body>
 </html>
