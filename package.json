@@ -1,11 +1,7 @@
 {
-  "name": "livekit-token-server",
+  "name": "livekit-web-button",
   "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "dev": "vercel dev",
-    "start": "node api/token.js"
-  },
+  "type": "module",
   "dependencies": {
     "livekit-server-sdk": "^2.3.0"
   }
