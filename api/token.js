@@ -1,49 +1,44 @@
-import { AccessToken } from "livekit-server-sdk";
-
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    res.status(405).json({ error: "Method not allowed" });
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
+  if (req.method !== 'POST') {
+    res.status(405).end();
     return;
   }
 
   const apiKey = process.env.LIVEKIT_API_KEY;
   const apiSecret = process.env.LIVEKIT_API_SECRET;
-  const wsUrl = process.env.LIVEKIT_WS_URL;
+  const wsUrl = process.env.LIVEKIT_WS_URL || 'wss://your-project.livekit.cloud';
 
-  if (!apiKey || !apiSecret || !wsUrl) {
-    res.status(500).json({ error: "LiveKit env vars not set" });
+  if (!apiKey || !apiSecret) {
+    res.status(500).json({ error: 'LiveKit env vars missing' });
     return;
   }
 
   try {
+    const { AccessToken } = await import('livekit-server-sdk');
     const roomName = `web-agent-${Date.now()}`;
-    const identity = `web-user-${Math.floor(Math.random() * 1_000_000)}`;
+    const identity = `user-${Math.random().toString(36).slice(2)}`;
 
-    const at = new AccessToken(apiKey, apiSecret, {
-      identity,
-      metadata: JSON.stringify({
-        role: "caller",
-        agent_name: "Sage-1242",
-        agent_id: "CA_98PSZhgP7t8C"
-      })
-    });
-
-    at.addGrant({
-      roomJoin: true,
-      room: roomName,
-      canPublish: true,
-      canSubscribe: true
+    const at = new AccessToken(apiKey, apiSecret, { identity });
+    at.addGrant({ 
+      roomJoin: true, 
+      room: roomName, 
+      canPublish: true, 
+      canSubscribe: true 
     });
 
     const token = await at.toJwt();
-
-    res.status(200).json({
-      token,
-      url: wsUrl,
-      roomName
-    });
+    res.json({ token, url: wsUrl, roomName });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to create token" });
+    res.status(500).json({ error: err.message });
   }
 }
