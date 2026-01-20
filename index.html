@@ -2,238 +2,131 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>AI Receptionist - LiveKit Voice Call</title>
+  <title>AI Receptionist</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    body { 
+      font-family: system-ui, sans-serif; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center; 
+      min-height: 100vh; 
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: white;
+      color: white; 
+      margin: 0; 
     }
-    .container {
-      text-align: center;
-      max-width: 500px;
-      padding: 2rem;
+    .container { text-align: center; padding: 2rem; }
+    h1 { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; }
+    p { font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.9; }
+    #callBtn { 
+      background: #10b981; color: white; border: none; 
+      padding: 1rem 2rem; font-size: 1.2rem; border-radius: 9999px; 
+      cursor: pointer; box-shadow: 0 10px 30px rgba(16,185,129,0.4);
+      transition: all 0.3s; 
     }
-    h1 {
-      font-size: 3rem;
-      font-weight: 800;
-      margin-bottom: 1rem;
-      background: linear-gradient(45deg, #fff, #f0f0f0);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    p {
-      font-size: 1.2rem;
-      margin-bottom: 2rem;
-      opacity: 0.9;
-    }
-    #callBtn {
-      background: #10b981;
-      color: white;
-      border: none;
-      padding: 1rem 2rem;
-      font-size: 1.2rem;
-      font-weight: 600;
-      border-radius: 9999px;
-      cursor: pointer;
-      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      margin: 0 auto;
-    }
-    #callBtn:hover:not(:disabled) {
-      background: #059669;
-      transform: translateY(-2px);
-      box-shadow: 0 15px 40px rgba(16, 185, 129, 0.6);
-    }
-    #callBtn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
-    }
-    #status {
-      margin-top: 1.5rem;
-      font-size: 1.1rem;
-      font-weight: 500;
-      min-height: 1.5rem;
-    }
-    .phone-icon {
-      width: 24px;
-      height: 24px;
-      stroke: currentColor;
-      stroke-width: 2;
-    }
-    .connecting {
-      color: #fbbf24;
-    }
-    .connected {
-      color: #10b981;
-    }
-    .error {
-      color: #ef4444;
-    }
+    #callBtn:hover:not(:disabled) { background: #059669; transform: translateY(-2px); }
+    #callBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+    #status { margin-top: 1.5rem; font-size: 1.1rem; }
+    .connecting { color: #fbbf24; }
+    .connected { color: #10b981; }
+    .error { color: #ef4444; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>AI Receptionist</h1>
-    <p>24/7 voice assistant for realtors. Press to start call.</p>
-    
-    <button id="callBtn">
-      <svg class="phone-icon" fill="none" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.375c0 2.278.808 4.476 2.165 6.177l4.488 4.489a3.75 3.75 0 005.304 0l4.488-4.489a11.25 11.25 0 012.165-6.177 3 3 0 00-4.242-4.242l-1.311.311a3 3 0 01-2.121 0l-1.311-.311a3 3 0 00-4.242 4.242z"/>
-        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9.75L11.25 15.25M15.75 9.75a3 3 0 11-6.262-2.98 9.266 9.266 0 103.966-3.967 3 3 0 11-6.262 2.98"/>
-      </svg>
-      Call AI Receptionist
-    </button>
-    
+    <h1>🤖 AI Receptionist</h1>
+    <p>Нажми кнопку и говори с агентом Sage-1242</p>
+    <button id="callBtn">📞 Позвонить AI Receptionist</button>
     <div id="status"></div>
   </div>
 
-  <!-- LiveKit Client SDK -->
   <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
-  
   <script>
-    // ТВОЙ ТОЧНЫЙ ДОМЕН + /api/token
+    // ✅ ТВОЙ ТОЧНЫЙ ДОМЕН С /api/token
     const TOKEN_SERVER_URL = "https://ypff-yexksfs2h-nikita1212392-9872s-projects.vercel.app/api/token";
     
     const callBtn = document.getElementById("callBtn");
     const statusEl = document.getElementById("status");
-    
     let room = null;
     let localTracks = [];
 
     async function startCall() {
       try {
         callBtn.disabled = true;
-        callBtn.innerHTML = `
-          <svg class="phone-icon" fill="none" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          Connecting...
-        `;
-        statusEl.textContent = "🔄 Requesting LiveKit token...";
-        statusEl.className = "";
+        statusEl.textContent = "🔄 Запрашиваем токен...";
+        statusEl.className = "connecting";
 
-        // 1. Получаем токен с твоего сервера
+        // 1. Получаем токен с ТВОЕГО сервера
+        console.log("📡 Запрос токена:", TOKEN_SERVER_URL);
         const res = await fetch(TOKEN_SERVER_URL, { 
           method: "POST",
-          headers: { "Content-Type": "application/json" }
+          headers: { "Content-Type": "application/json" },
+          // 🚀 CORS headers для обхода блокировки
+          mode: 'cors'
         });
         
         if (!res.ok) {
-          const error = await res.text();
-          throw new Error(`Token server error ${res.status}: ${error}`);
+          const errorText = await res.text();
+          throw new Error(`Сервер токена: ${res.status} ${errorText}`);
         }
         
-        const { token, url, roomName } = await res.json();
-        console.log("✅ Token received:", { token: token.slice(0, 20) + "...", url, roomName });
+        const data = await res.json();
+        console.log("✅ Токен получен:", data);
         
-        statusEl.textContent = "🎤 Connecting microphone...";
-        statusEl.className = "connecting";
+        statusEl.textContent = "🎤 Подключаем микрофон...";
 
-        // 2. LiveKit SDK
-        const { Room, RoomEvent, createLocalTracks, Track } = LivekitClient;
-        
-        room = new Room({
-          adaptiveStream: true,
-          dynacast: true,
-          videoCaptureDefaults: { 
-            facingMode: 'user' 
+        // 2. LiveKit подключение
+        const { Room, RoomEvent, createLocalTracks } = LivekitClient;
+        room = new Room();
+
+        room.on(RoomEvent.Connected, () => {
+          statusEl.textContent = "✅ Подключен! Говори с агентом!";
+          statusEl.className = "connected";
+        });
+
+        room.on(RoomEvent.ParticipantConnected, (p) => {
+          console.log("👤 Подключился:", p.identity);
+          if (p.identity.includes('agent') || p.identity.includes('Sage')) {
+            statusEl.textContent = "🤖 Sage-1242 подключился!";
           }
         });
 
-        // 3. События комнаты
-        room
-          .on(RoomEvent.Connected, () => {
-            console.log("✅ Connected to LiveKit room");
-            statusEl.textContent = "✅ Connected. Speak to AI receptionist!";
-            statusEl.className = "connected";
-          })
-          .on(RoomEvent.ParticipantConnected, (participant) => {
-            console.log("👤 Participant connected:", participant.identity);
-            if (participant.identity.includes('agent') || participant.identity.includes('Sage')) {
-              statusEl.textContent = "🤖 AI Receptionist joined the call!";
-            }
-          })
-          .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
-            console.log("🔊 Audio track from", participant.identity);
-            if (track.kind === Track.Kind.Audio && !track.isLocal) {
-              track.attach(); // Авто-воспроизведение аудио от агента
-            }
-          })
-          .on(RoomEvent.Disconnected, (reason) => {
-            console.log("❌ Disconnected:", reason);
-            cleanup();
-            statusEl.textContent = "Disconnected from call";
-            statusEl.className = "error";
-          })
-          .on(RoomEvent.ConnectionFailed, (error) => {
-            console.error("❌ Connection failed:", error);
-            cleanup();
-            statusEl.textContent = "Connection failed. Check console.";
-            statusEl.className = "error";
-          });
-
-        // 4. Микрофон
-        localTracks = await createLocalTracks({
-          audio: true,
-          video: false,
-          echoCancellation: true,
-          noiseSuppression: true
+        room.on(RoomEvent.TrackSubscribed, (track) => {
+          if (track.kind === 'audio') {
+            track.attach(); // Аудио от агента
+          }
         });
 
-        // 5. Подключаемся
-        await room.connect(url, token);
-        
-        // 6. Публикуем микрофон
+        room.on(RoomEvent.Disconnected, cleanup);
+
+        // 3. Микрофон
+        localTracks = await createLocalTracks({ audio: true, video: false });
+        await room.connect(data.url, data.token);
+
+        // 4. Публикуем микрофон
         for (const track of localTracks) {
           await room.localParticipant.publishTrack(track);
-          console.log("🎙️ Published:", track.kind);
         }
 
       } catch (err) {
-        console.error("❌ Error:", err);
-        statusEl.textContent = `Error: ${err.message}`;
+        console.error("❌ Ошибка:", err);
+        statusEl.textContent = `❌ ${err.message}`;
         statusEl.className = "error";
         cleanup();
       }
     }
 
     function cleanup() {
-      if (localTracks) {
-        localTracks.forEach(track => track.stop());
-        localTracks = [];
-      }
-      if (room) {
-        room.disconnect();
-        room = null;
-      }
+      localTracks.forEach(track => track.stop());
+      if (room) room.disconnect();
+      room = null;
+      localTracks = [];
       callBtn.disabled = false;
-      callBtn.innerHTML = `
-        <svg class="phone-icon" fill="none" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.375c0 2.278.808 4.476 2.165 6.177l4.488 4.489a3.75 3.75 0 005.304 0l4.488-4.489a11.25 11.25 0 012.165-6.177 3 3 0 00-4.242-4.242l-1.311.311a3 3 0 01-2.121 0l-1.311-.311a3 3 0 00-4.242 4.242z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9.75L11.25 15.25M15.75 9.75a3 3 0 11-6.262-2.98 9.266 9.266 0 103.966-3.967 3 3 0 11-6.262 2.98"/>
-        </svg>
-        Call AI Receptionist
-      `;
+      callBtn.textContent = "📞 Позвонить AI Receptionist";
+      statusEl.textContent = "";
     }
 
-    // Кнопка toggle
     callBtn.addEventListener("click", () => {
       if (room && room.state === "connected") {
         cleanup();
@@ -241,9 +134,6 @@
         startCall();
       }
     });
-
-    // Автоочистка при закрытии страницы
-    window.addEventListener("beforeunload", cleanup);
   </script>
 </body>
 </html>
