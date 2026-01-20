@@ -20,16 +20,18 @@
 </head>
 <body>
   <div class="container">
-    <h1>🤖 AI Receptionist</h1>
-    <p>Нажми и говори с Sage-1242</p>
+    <h1>🤖 Sage-1242</h1>
+    <p>Нажми кнопку и говори с агентом</p>
     <button id="callBtn">📞 Позвонить</button>
     <div id="status"></div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
   <script>
-    // 🔥 ТВОЙ НОВЫЙ ДОМЕН (замени на актуальный если изменился)
+    // 🔥 ТВОЙ ТОЧНЫЙ ДОМЕН
     const TOKEN_SERVER_URL = "https://ypff-8hpne1l4l-nikita1212392-9872s-projects.vercel.app/api/token";
+    
+    console.log("🔧 TOKEN_SERVER_URL:", TOKEN_SERVER_URL); // ← ЭТО БУДЕТ ВИДЕТЬСЯ В КОНСОЛИ!
     
     const callBtn = document.getElementById('callBtn');
     const statusEl = document.getElementById('status');
@@ -42,12 +44,9 @@
         statusEl.textContent = "🔄 Получаем токен...";
         statusEl.className = 'connecting';
 
-        console.log('📡 Запрос:', TOKEN_SERVER_URL);
-        
         const res = await fetch(TOKEN_SERVER_URL, { 
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          mode: 'cors'
+          headers: { 'Content-Type': 'application/json' }
         });
         
         if (!res.ok) {
@@ -56,24 +55,20 @@
         }
         
         const data = await res.json();
-        console.log('✅ Токен:', data);
+        console.log('✅ Токен получен:', data);
         
         statusEl.textContent = '🎤 Микрофон...';
 
-        // LiveKit
         const { Room, RoomEvent, createLocalTracks } = LivekitClient;
         room = new Room();
 
         room.on(RoomEvent.Connected, () => {
-          statusEl.textContent = '✅ Подключен к Sage-1242!';
+          statusEl.textContent = '✅ Подключен к агенту!';
           statusEl.className = 'connected';
         });
 
         room.on(RoomEvent.ParticipantConnected, (p) => {
-          console.log('👤', p.identity);
-          if (p.identity.includes('Sage') || p.identity.includes('agent')) {
-            statusEl.textContent = '🤖 Агент подключился!';
-          }
+          console.log('👤 Подключился:', p.identity);
         });
 
         room.on(RoomEvent.TrackSubscribed, (track) => {
@@ -90,7 +85,7 @@
         }
 
       } catch (err) {
-        console.error('❌', err);
+        console.error('❌ Ошибка:', err);
         statusEl.textContent = `❌ ${err.message}`;
         statusEl.className = 'error';
         cleanup();
